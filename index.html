@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin · Khôi phục mật khẩu học sinh</title>
+<!--
+  TRANG ADMIN ĐỘC LẬP (không thuộc dự án game, KHÔNG đưa vào repo/GitHub Pages của học sinh).
+  Mục đích: đặt lại mật khẩu cho tài khoản học sinh (email nội bộ <tên>.<khối>@students.rpg-game.example — không có hộp thư thật
+  nên không dùng được "gửi email đặt lại mật khẩu").
+  Cách hoạt động: quản trị đăng nhập bằng tài khoản Google CÓ QUYỀN trên dự án Firebase (Owner/Editor/Firebase Auth Admin).
+  Trang xin quyền OAuth "cloud-platform" rồi gọi Identity Toolkit Admin API (accounts:lookup / accounts:update) bằng token của chính
+  quản trị. File KHÔNG chứa khóa bí mật nào; quyền do Google Cloud IAM quyết định, người không có quyền sẽ bị Google từ chối.
+  Yêu cầu một lần: bật Google ở Authentication > Sign-in method và thêm domain chạy file này (vd. localhost) vào Authorized domains.
+  Chạy: mở bằng máy chủ cục bộ (python -m http.server) rồi vào http://localhost:8000/admin_reset_password.html
+-->
+<style>
+ body{font:16px/1.5 system-ui,sans-serif;background:#16202c;color:#f1ede0;margin:0;padding:24px}
+ main{max-width:520px;margin:0 auto;display:grid;gap:14px}
+ h1{font-size:22px;margin:0}
+ .card{background:#1f2d3d;border:1px solid #3b5068;border-radius:10px;padding:16px;display:grid;gap:10px}
+ label{display:grid;gap:4px;font-weight:600}
+ input,select,button{font:inherit;padding:9px 11px;border-radius:7px;border:1px solid #4a6580;background:#101923;color:inherit}
+ button{background:#e0a820;color:#2a1d05;font-weight:700;cursor:pointer;border:0}
+ button.alt{background:#2c3e52;color:#f1ede0;border:1px solid #4a6580}
+ button:disabled{opacity:.5;cursor:not-allowed}
+ .row{display:flex;gap:8px}.row>*{flex:1}
+ #log{white-space:pre-wrap;min-height:24px}.ok{color:#8fe388}.err{color:#ff9a9a}.warn{color:#ffd37a;font-size:14px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Khôi phục mật khẩu học sinh</h1>
+
+  <section class="card" id="login-card">
+    <div id="who">Chưa đăng nhập quản trị.</div>
+    <div class="row">
+      <button id="btn-login" type="button">Đăng nhập Google (quản trị)</button>
+      <button id="btn-logout" type="button" class="alt" hidden>Đăng xuất</button>
+    </div>
+  </section>
+
+  <section class="card" id="reset-card" hidden>
+    <div class="row">
+      <label>Khối
+        <select id="grade"><option>6</option><option>7</option><option>8</option><option>9</option></select>
+      </label>
+      <label>Tên đăng nhập
+        <input id="username" autocomplete="off" placeholder="vd: hiep_nguyen" maxlength="20">
+      </label>
+    </div>
+    <label>Mật khẩu mới (ít nhất 6 ký tự)
+      <input id="password" type="text" autocomplete="off" maxlength="64">
+    </label>
+    <div class="row">
+      <button id="btn-gen" type="button" class="alt">Tạo mật khẩu ngẫu nhiên</button>
+      <button id="btn-reset" type="button">Đặt lại mật khẩu</button>
+    </div>
+    <div class="warn">Chỉ đổi mật khẩu đăng nhập; hồ sơ game (Gold, trang bị, tiến trình…) giữ nguyên. Hãy gửi mật khẩu mới cho học sinh qua kênh riêng và dặn đổi lại.</div>
+  </section>
+
+  <div id="log" role="status"></div>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script>
+const CONFIG = {
+  apiKey: "AIzaSyAjQl3xaPsaRaeDvkFBc_bIOX8zq5aOG3k",
+  authDomain: "rpgacademy-fb964.firebaseapp.com",
+  projectId: "rpgacademy-fb964",
+  emailDomain: "students.rpg-game.example"   // khớp Auth.emailDomain của game
+};
+firebase.initializeApp(CONFIG);
+const $ = s => document.querySelector(s);
+let accessToken = null;
+const log = (msg, cls) => { const l = $('#log'); l.textContent = msg; l.className = cls || ''; };
+
+$('#btn-login').onclick = async () => {
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.addScope('https://www.googleapis.com/auth/cloud-platform');
+    const res = await firebase.auth().signInWithPopup(provider);
+    accessToken = res.credential.accessToken;
+    $('#who').textContent = 'Quản trị: ' + res.user.email;
+    $('#btn-login').hidden = true; $('#btn-logout').hidden = false; $('#reset-card').hidden = false;
+    log('Đã đăng nhập. Quyền thật sự do Google Cloud IAM kiểm tra khi bạn thực hiện thao tác.', 'ok');
+  } catch (e) { log('Đăng nhập thất bại: ' + e.message, 'err'); }
+};
+$('#btn-logout').onclick = async () => {
+  await firebase.auth().signOut(); accessToken = null;
+  $('#who').textContent = 'Chưa đăng nhập quản trị.';
+  $('#btn-login').hidden = false; $('#btn-logout').hidden = true; $('#reset-card').hidden = true; $('#password').value = '';
+};
+$('#btn-gen').onclick = () => {
+  const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789', a = new Uint32Array(10);
+  crypto.getRandomValues(a);
+  $('#password').value = Array.from(a, n => chars[n % chars.length]).join('');
+};
+
+async function api(path, body) {
+  const res = await fetch(`https://identitytoolkit.googleapis.com/v1/projects/${CONFIG.projectId}/${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + accessToken, 'X-Goog-User-Project': CONFIG.projectId },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data.error && data.error.message) || ('HTTP ' + res.status));
+  return data;
+}
+
+$('#btn-reset').onclick = async () => {
+  const grade = $('#grade').value, name = $('#username').value.trim().toLowerCase(), pass = $('#password').value;
+  if (!accessToken) return log('Hãy đăng nhập quản trị trước.', 'err');
+  if (!/^[a-z0-9_]{3,20}$/.test(name)) return log('Tên đăng nhập chỉ gồm a-z, 0-9, _ (3–20 ký tự).', 'err');
+  if (pass.length < 6) return log('Mật khẩu mới tối thiểu 6 ký tự.', 'err');
+  const email = `${name}.${grade}@${CONFIG.emailDomain}`;
+  if (!confirm(`Đặt lại mật khẩu cho ${email}?`)) return;
+  $('#btn-reset').disabled = true; log('Đang xử lý…');
+  try {
+    const found = await api('accounts:lookup', { email: [email] });
+    if (!found.users || !found.users.length) throw new Error('Không tìm thấy tài khoản ' + email);
+    await api('accounts:update', { localId: found.users[0].localId, password: pass });
+    log(`Đã đặt lại mật khẩu cho ${email}.\nMật khẩu mới: ${pass}`, 'ok');
+  } catch (e) {
+    log('Không thực hiện được: ' + e.message + '\nGợi ý: tài khoản Google cần quyền Firebase Auth Admin/Editor/Owner trên dự án; kiểm tra Identity Toolkit API đã bật.', 'err');
+  } finally { $('#btn-reset').disabled = false; }
+};
+</script>
+</body>
+</html>
