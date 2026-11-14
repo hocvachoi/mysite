@@ -46,6 +46,11 @@
     </div>
   </section>
 
+  <section class="card" id="grant-card" hidden>
+    <div>Phiên đăng nhập đã được khôi phục. Để đổi mật khẩu học sinh cần cấp lại quyền Google (hết hạn sau ~1 giờ hoặc sau khi tải lại trang). Chốt thưởng không cần bước này.</div>
+    <button id="btn-grant" type="button">Cấp quyền đổi mật khẩu</button>
+  </section>
+
   <section class="card" id="reset-card" hidden>
     <div class="row">
       <label>Khối
@@ -75,7 +80,7 @@
         <select id="rw-grade"><option value="all">Tất cả</option><option>6</option><option>7</option><option>8</option><option>9</option></select>
       </label>
     </div>
-    <div class="small">Thưởng (Gold) cho <b>top 10</b> mỗi bảng, chia 4 bậc: Hạng 1, Hạng 2, Hạng 3, Hạng 4–10 (mỗi bảng có thể khác nhau; mặc định 100). Đồng điểm thì cùng hạng. Chỉ tính điểm &gt; 0. Tối đa 5000 Gold/phiếu.</div>
+    <div class="small">Thưởng cho <b>top 10</b> mỗi bảng (Ải, Hầm ngục 1, Hầm ngục 2), chia 4 bậc: Hạng 1, Hạng 2, Hạng 3, Hạng 4–10. Mỗi ô nhập <b>Gold</b> (mặc định 100, tối đa 5000) và <b>Crystal</b> (mặc định 3/2/1/1, tối đa 50). Đồng điểm thì cùng hạng. Chỉ tính điểm &gt; 0.</div>
     <div id="rw-grid"></div>
     <div class="row">
       <button id="rw-preview" type="button" class="alt">Xem trước</button>
@@ -120,25 +125,59 @@ const CONFIG = {
 };
 firebase.initializeApp(CONFIG);
 const $ = s => document.querySelector(s);
-let accessToken = null;
+let accessToken = null;   // token OAuth cloud-platform: CHỈ ở bộ nhớ (không lưu localStorage/sessionStorage)
 const log = (msg, cls) => { const l = $('#log'); l.textContent = msg; l.className = cls || ''; };
 
+// Phiên Firebase tự được LƯU trong trình duyệt (LOCAL) nên F5 không phải đăng nhập lại. Riêng "token quyền Google Cloud" (dùng để đổi mật khẩu
+// học sinh) chỉ giữ trong bộ nhớ trang và hết hạn sau ~1 giờ vì lý do an toàn → sau F5 bấm "Cấp quyền đổi mật khẩu" (1 cú bấm, không nhập lại).
+// Chốt thưởng (Firestore) chỉ cần phiên Firebase nên dùng được ngay sau F5.
+firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+function showAdminUI(user) {
+  const on = Boolean(user);
+  $('#who').textContent = on ? 'Quản trị: ' + user.email : 'Chưa đăng nhập quản trị.';
+  $('#btn-login').hidden = on; $('#btn-logout').hidden = !on;
+  $('#reward-card').hidden = !on; $('#raid-card').hidden = !on;
+  showTokenUI();
+}
+function showTokenUI() {   // thẻ đổi mật khẩu chỉ hiện khi có token; nếu đã đăng nhập nhưng thiếu token thì hiện nút cấp quyền
+  const on = Boolean(firebase.auth().currentUser);
+  $('#reset-card').hidden = !(on && accessToken);
+  $('#grant-card').hidden = !(on && !accessToken);
+}
+async function signInGoogle() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  provider.addScope('https://www.googleapis.com/auth/cloud-platform');
+  provider.setCustomParameters({ prompt: 'select_account' });
+  const res = await firebase.auth().signInWithPopup(provider);
+  accessToken = res.credential && res.credential.accessToken || null;
+  return res.user;
+}
 $('#btn-login').onclick = async () => {
   try {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    provider.addScope('https://www.googleapis.com/auth/cloud-platform');
-    const res = await firebase.auth().signInWithPopup(provider);
-    accessToken = res.credential.accessToken;
-    $('#who').textContent = 'Quản trị: ' + res.user.email;
-    $('#btn-login').hidden = true; $('#btn-logout').hidden = false; $('#reset-card').hidden = false; $('#reward-card').hidden = false; $('#raid-card').hidden = false;
-    log('Đã đăng nhập. Quyền thật sự do Google Cloud IAM kiểm tra khi bạn thực hiện thao tác.', 'ok');
+    const user = await signInGoogle();
+    showAdminUI(user);
+    log('Đã đăng nhập. Phiên được lưu: F5 không phải đăng nhập lại. Quyền thật sự do Google Cloud IAM và firestore.rules kiểm tra khi bạn thực hiện thao tác.', 'ok');
   } catch (e) { log('Đăng nhập thất bại: ' + e.message, 'err'); }
+};
+$('#btn-grant').onclick = async () => {
+  try {
+    const cur = firebase.auth().currentUser;
+    const user = await signInGoogle();
+    if (cur && user.email !== cur.email) log('Bạn đã chọn tài khoản khác: ' + user.email, 'warn');
+    showAdminUI(user);
+    log('Đã cấp quyền đổi mật khẩu (có hiệu lực khoảng 1 giờ).', 'ok');
+  } catch (e) { log('Cấp quyền thất bại: ' + e.message, 'err'); }
 };
 $('#btn-logout').onclick = async () => {
   await firebase.auth().signOut(); accessToken = null;
-  $('#who').textContent = 'Chưa đăng nhập quản trị.';
-  $('#btn-login').hidden = false; $('#btn-logout').hidden = true; $('#reset-card').hidden = true; $('#reward-card').hidden = true; $('#raid-card').hidden = true; $('#password').value = ''; $('#rw-out').replaceChildren(); plan = null; $('#rw-commit').disabled = true;
+  showAdminUI(null);
+  $('#password').value = ''; $('#rw-out').replaceChildren(); $('#rd-out').replaceChildren(); plan = null; rdPlan = null; $('#rw-commit').disabled = true; $('#rd-commit').disabled = true;
 };
+// Khôi phục giao diện khi tải lại trang (F5): nếu phiên Firebase còn thì hiện lại các thẻ.
+firebase.auth().onAuthStateChanged(user => {
+  showAdminUI(user);
+  if (user) log('Đã khôi phục phiên đăng nhập: ' + user.email + (accessToken ? '' : '. Muốn đổi mật khẩu học sinh hãy bấm "Cấp quyền đổi mật khẩu".'), 'ok');
+});
 $('#btn-gen').onclick = () => {
   const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789', a = new Uint32Array(10);
   crypto.getRandomValues(a);
@@ -152,6 +191,7 @@ async function api(path, body) {
     body: JSON.stringify(body)
   });
   const data = await res.json().catch(() => ({}));
+  if (res.status === 401) { accessToken = null; showTokenUI(); throw new Error('Quyền Google đã hết hạn — bấm "Cấp quyền đổi mật khẩu" rồi thử lại.'); }
   if (!res.ok) throw new Error((data.error && data.error.message) || ('HTTP ' + res.status));
   return data;
 }
@@ -203,20 +243,28 @@ const TIERS = [{ id: 'top1', label: 'Hạng 1' }, { id: 'top2', label: 'Hạng 2
 const SCOPES = [{ id: 'room', label: 'Lớp' }, { id: 'grade', label: 'Khối' }];
 const tierOf = rank => rank === 1 ? 'top1' : rank === 2 ? 'top2' : rank === 3 ? 'top3' : 'top4_10';
 const amount = (scope, tab, tier) => Math.max(0, Math.min(5000, parseInt($(`#g-${scope}-${tab}-${tier}`).value, 10) || 0));
+const crystals = (scope, tab, tier) => Math.max(0, Math.min(50, parseInt($(`#c-${scope}-${tab}-${tier}`).value, 10) || 0));
+const hasReward = w => w.gold > 0 || w.crystals > 0;
+const rewardLabel = w => [w.gold ? `${w.gold} Gold` : '', w.crystals ? `${w.crystals} Crystal` : ''].filter(Boolean).join(' + ') || 'thưởng 0';
 const el = (tag, text, cls) => { const e = document.createElement(tag); if (text !== undefined) e.textContent = text; if (cls) e.className = cls; return e; };   // textContent: nickname do học sinh nhập, không chèn HTML
 
-(function buildGrid() {   // bảng nhập thưởng: mỗi dòng = (Lớp|Khối) × tab, mỗi cột = một bậc hạng
+(function buildGrid() {   // bảng nhập thưởng: mỗi dòng = (Lớp|Khối) × tab, mỗi cột = một bậc hạng; mỗi ô = Gold + Crystal
   const table = el('table'), head = el('tr');
   head.append(el('th', 'Bảng'));
-  TIERS.forEach(t => head.append(el('th', t.label)));
+  TIERS.forEach(t => head.append(el('th', `${t.label} (Gold · Crystal)`)));
   table.append(head);
+  const WEEK_CRYSTAL = { top1: 3, top2: 2, top3: 1, top4_10: 1 };   // Crystal MẶC ĐỊNH (chỉnh tùy ý); mọi bậc top 10 đều có Crystal
   SCOPES.forEach(sc => TABS.forEach(tab => {
     const tr = el('tr'); tr.append(el('td', `${sc.label} · ${tab.label}`));
     TIERS.forEach(t => {
-      const input = document.createElement('input');
-      input.type = 'number'; input.min = '0'; input.max = '5000'; input.value = '100'; input.id = `g-${sc.id}-${tab.id}-${t.id}`;
-      input.style.width = '80px';
-      const td = el('td'); td.append(input); tr.append(td);
+      const td = el('td');
+      [['g', '100', '5000', '64px', 'Gold'], ['c', String(WEEK_CRYSTAL[t.id]), '50', '48px', 'Crystal']].forEach(([k, def, max, w, title]) => {
+        const input = document.createElement('input');
+        input.type = 'number'; input.min = '0'; input.max = max; input.value = def; input.id = `${k}-${sc.id}-${tab.id}-${t.id}`;
+        input.style.width = w; input.title = title; input.setAttribute('aria-label', `${sc.label} ${tab.label} ${t.label} ${title}`);
+        td.append(input, document.createTextNode(' '));
+      });
+      tr.append(td);
     });
     table.append(tr);
   }));
@@ -254,7 +302,7 @@ async function buildPlan(ws, grades) {
   const all = [];
   for (const grp of groups) {
     grp.id = `${ws}_${grp.scope}_${grp.tab.id}`;
-    grp.winners.forEach(w => { w.gold = amount(grp.scope, grp.tab.id, tierOf(w.rank)); all.push([grp, w]); });
+    grp.winners.forEach(w => { w.gold = amount(grp.scope, grp.tab.id, tierOf(w.rank)); w.crystals = crystals(grp.scope, grp.tab.id, tierOf(w.rank)); all.push([grp, w]); });
   }
   // đã chốt trước đó chưa? đọc phiếu theo từng nhóm 25 để nhanh hơn
   for (let i = 0; i < all.length; i += 25) {
@@ -272,26 +320,26 @@ $('#rw-preview').onclick = async () => {
   try {
     const groups = await buildPlan(ws, grades);
     const table = el('table'), head = el('tr');
-    ['Bảng', 'Tab', 'Số người', 'Tổng Gold mới', 'Danh sách'].forEach(h => head.append(el('th', h)));
+    ['Bảng', 'Tab', 'Số người', 'Tổng thưởng mới', 'Danh sách'].forEach(h => head.append(el('th', h)));
     table.append(head);
-    let fresh = 0, totalGold = 0;
+    let fresh = 0, totalGold = 0, totalCrystals = 0;
     groups.forEach(grp => {
-      const todo = grp.winners.filter(w => !w.exists && w.gold > 0);
-      const gold = todo.reduce((sum, w) => sum + w.gold, 0);
-      fresh += todo.length; totalGold += gold;
+      const todo = grp.winners.filter(w => !w.exists && hasReward(w));
+      const gold = todo.reduce((sum, w) => sum + w.gold, 0), gems = todo.reduce((sum, w) => sum + w.crystals, 0);
+      fresh += todo.length; totalGold += gold; totalCrystals += gems;
       const tr = el('tr'), details = el('details'), list = el('div', '', 'small');
       details.append(el('summary', todo.length ? `${todo.length} phiếu mới` : 'Đã chốt hết', todo.length ? 'new' : 'done'));
-      list.textContent = grp.winners.map(w => `#${w.rank} ${w.nick}${w.room ? ` (${w.room})` : ''} — ${w.score} điểm — ${w.gold} Gold${w.exists ? ' ✓đã chốt' : w.gold <= 0 ? ' (thưởng 0)' : ''}`).join('\n');
+      list.textContent = grp.winners.map(w => `#${w.rank} ${w.nick}${w.room ? ` (${w.room})` : ''} — ${w.score} điểm — ${rewardLabel(w)}${w.exists ? ' ✓đã chốt' : ''}`).join('\n');
       list.style.whiteSpace = 'pre-wrap';
       details.append(list);
-      tr.append(el('td', grp.board), el('td', grp.tab.label), el('td', String(grp.winners.length)), el('td', gold.toLocaleString('vi-VN')));
+      tr.append(el('td', grp.board), el('td', grp.tab.label), el('td', String(grp.winners.length)), el('td', `${gold.toLocaleString('vi-VN')} Gold + ${gems} Crystal`));
       const td = el('td'); td.append(details); tr.append(td);
       table.append(tr);
     });
     $('#rw-out').append(table);
     plan = { ws, groups, fresh };
     $('#rw-commit').disabled = fresh === 0;
-    log(groups.length ? `Có ${groups.length} bảng; ${fresh} phiếu mới cần tạo, tổng ${totalGold.toLocaleString('vi-VN')} Gold.` : 'Không có dữ liệu điểm cho tuần này (có thể tuần đó chưa ai ghi điểm, hoặc đã bị ghi đè quá 1 tuần).', groups.length ? 'ok' : 'warn');
+    log(groups.length ? `Có ${groups.length} bảng; ${fresh} phiếu mới cần tạo, tổng ${totalGold.toLocaleString('vi-VN')} Gold + ${totalCrystals.toLocaleString('vi-VN')} Crystal.` : 'Không có dữ liệu điểm cho tuần này (có thể tuần đó chưa ai ghi điểm, hoặc đã bị ghi đè quá 1 tuần).', groups.length ? 'ok' : 'warn');
   } catch (e) {
     log('Không đọc được bảng xếp hạng: ' + e.message + '\nGợi ý: email đăng nhập phải nằm trong hàm isAdmin() của firestore.rules và rules đã Publish.', 'err');
   } finally { $('#rw-preview').disabled = false; }
@@ -303,10 +351,11 @@ $('#rw-commit').onclick = async () => {
   $('#rw-commit').disabled = true; $('#rw-preview').disabled = true; log('Đang tạo phiếu…');
   try {
     const writes = [];
-    plan.groups.forEach(grp => grp.winners.filter(w => !w.exists && w.gold > 0).forEach(w => {
+    plan.groups.forEach(grp => grp.winners.filter(w => !w.exists && hasReward(w)).forEach(w => {
       writes.push([db.collection('rewards').doc(w.uid).collection('vouchers').doc(grp.id), {
         Title: `Hạng ${w.rank} ${grp.board} – ${grp.tab.label} (tuần ${vn(plan.ws)})`,
-        Gold: w.gold, WeekStart: plan.ws, Board: `${grp.scope}_${grp.tab.id}`, Claimed: false,
+        ...(w.gold ? { Gold: w.gold } : {}), ...(w.crystals ? { Crystals: w.crystals } : {}),
+        WeekStart: plan.ws, Board: `${grp.scope}_${grp.tab.id}`, Claimed: false,
         CreatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }]);
     }));
