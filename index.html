@@ -80,7 +80,7 @@
         <select id="rw-grade"><option value="all">Tất cả</option><option>6</option><option>7</option><option>8</option><option>9</option></select>
       </label>
     </div>
-    <div class="small">Thưởng cho <b>top 10</b> mỗi bảng (Ải, Hầm ngục 1, Hầm ngục 2), chia 4 bậc: Hạng 1, Hạng 2, Hạng 3, Hạng 4–10. Mỗi ô nhập <b>Gold</b> (mặc định 100, tối đa 5000) và <b>Crystal</b> (mặc định 3/2/1/1, tối đa 50). Đồng điểm thì cùng hạng. Chỉ tính điểm &gt; 0.</div>
+    <div class="small">Thưởng cho <b>top 10</b> mỗi bảng Lớp và Khối (Ải, Hầm ngục 1, Hầm ngục 2), chia 4 bậc: Hạng 1, Hạng 2, Hạng 3, Hạng 4–10. Mỗi ô nhập <b>Gold</b> (mặc định 100, tối đa 5000) và <b>Crystal</b> (mặc định 3/2/1/1, tối đa 50). Đồng điểm thì cùng hạng. Chỉ tính điểm &gt; 0.</div>
     <div id="rw-grid"></div>
     <div class="row">
       <button id="rw-preview" type="button" class="alt">Xem trước</button>
@@ -99,8 +99,11 @@
       <label>Khối
         <select id="rd-grade"><option>6</option><option>7</option><option>8</option><option>9</option></select>
       </label>
+      <label>Boss
+        <select id="rd-slot"><option value="1">Boss 1</option><option value="2">Boss 2</option></select>
+      </label>
     </div>
-    <div class="small">Phần thưởng cho top 10 sát thương, chia 4 bậc. Mỗi bậc gồm Gold (≤ 5000), Crystal (≤ 50) và tùy chọn ID trang bị (vd <code>iron_sword</code>; để trống nếu không tặng). Đây là phần thưởng MẶC ĐỊNH — chỉnh tùy ý. Cùng điểm thì cùng hạng; người đồng hạng ở ranh giới top 10 cũng nhận thưởng như bậc 4–10.</div>
+    <div class="small">Phần thưởng cho top 10 sát thương, chia 4 bậc. Mỗi bậc gồm Gold (≤ 5000), Crystal (≤ 50) và tùy chọn ID trang bị (vd <code>iron_sword</code>; để trống nếu không tặng). Đây là phần thưởng MẶC ĐỊNH — chỉnh tùy ý. <b>Boss chưa bị hạ (thất bại) chỉ nhận 50% Gold và Crystal (làm tròn xuống), không có trang bị</b> — trang tính sẵn khi xem trước. Cùng điểm thì cùng hạng; người đồng hạng ở ranh giới top 10 cũng nhận thưởng như bậc 4–10.</div>
     <div id="rd-grid"></div>
     <div class="row">
       <button id="rd-preview" type="button" class="alt">Xem trước</button>
@@ -108,6 +111,26 @@
     </div>
     <div id="rd-out"></div>
     <div class="warn">Chốt sau 21:02 (khi trận đã đóng). Phiếu đã tạo không sửa/xóa được từ trang này. Hạng xếp kiểu thi đấu (cùng điểm cùng hạng, người sau bị nhảy hạng); trang đọc tối đa 30 người đầu để tính đồng hạng.</div>
+  </section>
+
+  <section class="card" id="ranked-card" hidden>
+    <h2>Chốt thưởng Ranked theo tuần (top 10 mỗi lớp)</h2>
+    <div class="row">
+      <label>Tuần (để đặt tên và mã phiếu)
+        <select id="rk-week"></select>
+      </label>
+      <label>Khối
+        <select id="rk-grade"><option value="all">Tất cả</option><option>6</option><option>7</option><option>8</option><option>9</option></select>
+      </label>
+    </div>
+    <div class="small">Điểm Ranked <b>cộng dồn, không reset</b>: trang lấy xếp hạng <b>hiện tại</b> của từng lớp (mỗi lớp 1 tài liệu) nên hãy chốt vào cuối tuần, trước khi bắt đầu tuần mới. Chỉ người có điểm &gt; 10 (đã thắng ít nhất một trận) mới được thưởng. Mặc định 100 Gold mỗi bậc, bạn chỉnh tùy ý. Cùng điểm thì cùng hạng.</div>
+    <div id="rk-grid"></div>
+    <div class="row">
+      <button id="rk-preview" type="button" class="alt">Xem trước</button>
+      <button id="rk-commit" type="button" disabled>Chốt thưởng Ranked</button>
+    </div>
+    <div id="rk-out"></div>
+    <div class="warn">Phiếu mã <code>rk_&lt;tuần&gt;_&lt;lớp&gt;</code> chỉ tạo được một lần cho mỗi người mỗi tuần (chốt lại sẽ bỏ qua phiếu đã có). Mỗi lần xem trước đọc mỗi lớp 1 tài liệu (khoảng 35 lượt đọc cho cả trường).</div>
   </section>
 
   <div id="log" role="status"></div>
@@ -136,7 +159,7 @@ function showAdminUI(user) {
   const on = Boolean(user);
   $('#who').textContent = on ? 'Quản trị: ' + user.email : 'Chưa đăng nhập quản trị.';
   $('#btn-login').hidden = on; $('#btn-logout').hidden = !on;
-  $('#reward-card').hidden = !on; $('#raid-card').hidden = !on;
+  $('#reward-card').hidden = !on; $('#raid-card').hidden = !on; $('#ranked-card').hidden = !on;
   showTokenUI();
 }
 function showTokenUI() {   // thẻ đổi mật khẩu chỉ hiện khi có token; nếu đã đăng nhập nhưng thiếu token thì hiện nút cấp quyền
@@ -240,7 +263,7 @@ let plan = null;   // kết quả xem trước, dùng cho nút Chốt
 })();
 
 const TIERS = [{ id: 'top1', label: 'Hạng 1' }, { id: 'top2', label: 'Hạng 2' }, { id: 'top3', label: 'Hạng 3' }, { id: 'top4_10', label: 'Hạng 4–10' }];
-const SCOPES = [{ id: 'room', label: 'Lớp' }, { id: 'grade', label: 'Khối' }];
+const SCOPES = [{ id: 'room', label: 'Lớp' }, { id: 'grade', label: 'Khối' }];   // bảng LỚP (chính) và bảng KHỐI (game đang tắt truy vấn nhưng admin vẫn chốt thưởng)
 const tierOf = rank => rank === 1 ? 'top1' : rank === 2 ? 'top2' : rank === 3 ? 'top3' : 'top4_10';
 const amount = (scope, tab, tier) => Math.max(0, Math.min(5000, parseInt($(`#g-${scope}-${tab}-${tier}`).value, 10) || 0));
 const crystals = (scope, tab, tier) => Math.max(0, Math.min(50, parseInt($(`#c-${scope}-${tab}-${tier}`).value, 10) || 0));
@@ -404,25 +427,27 @@ const rdReward = tier => ({
   crystals: Math.max(0, Math.min(50, parseInt($(`#rd-${tier}-crystals`).value, 10) || 0)),
   item: $(`#rd-${tier}-item`).value.trim().toLowerCase()
 });
+const scaleReward = (r, ok) => ok ? r : { gold: Math.floor(r.gold * 0.5), crystals: Math.floor(r.crystals * 0.5), item: '' };   // thất bại: 50% Gold/Crystal, bỏ trang bị
 const rdText = r => [r.gold ? `${r.gold} Gold` : '', r.crystals ? `${r.crystals} Crystal` : '', r.item].filter(Boolean).join(' + ') || '(không có)';
 
 $('#rd-preview').onclick = async () => {
-  const grade = $('#rd-grade').value, day = $('#rd-date').value.replace(/-/g, '');
+  const grade = $('#rd-grade').value, slot = $('#rd-slot').value, day = $('#rd-date').value.replace(/-/g, '');
   rdPlan = null; $('#rd-commit').disabled = true; $('#rd-out').replaceChildren();
   if (!/^\d{8}$/.test(day)) return log('Hãy chọn ngày.', 'err');
   for (const t of TIERS) {
     const r = rdReward(t.id);
     if (r.item && !/^[a-z][a-z0-9_]{2,40}$/.test(r.item)) return log(`ID trang bị "${r.item}" không hợp lệ (chữ thường không dấu, số, gạch dưới).`, 'err');
   }
-  const raidId = `${grade}_${day}`;
+  const raidId = `${grade}_${day}_${slot}`;   // khớp id Boss trong game: <khối>_<yyyymmdd>_<1|2>
   $('#rd-preview').disabled = true; log('Đang đọc trận Raid…');
   try {
     const boss = await db.collection('raids').doc(raidId).get();
     if (!boss.exists) throw new Error(`Không có trận Raid ${raidId} (hôm đó chưa ai vào).`);
     const b = boss.data();
+    const ok = (b.Damage || 0) >= (b.MaxHP || 1);   // Boss bị hạ = đủ thưởng; thất bại = 50% và không có trang bị
     const snap = await db.collection('raids').doc(raidId).collection('players').orderBy('Damage', 'desc').limit(30).get();   // đọc dư để tính cả người đồng hạng ở ranh giới hạng 10
     const rows = snap.docs.map(d => ({ uid: d.id, nick: d.data().Nickname || '?', damage: d.data().Damage || 0 })).filter(r => r.damage > 0);
-    rows.forEach(r => { r.rank = 1 + rows.filter(o => o.damage > r.damage).length; r.reward = rdReward(tierOf(r.rank)); });
+    rows.forEach(r => { r.rank = 1 + rows.filter(o => o.damage > r.damage).length; r.reward = scaleReward(rdReward(tierOf(r.rank)), ok); });
     // đồng hạng ở ranh giới: ai có hạng ≤ 10 (kể cả hơn 10 người do cùng điểm) đều nhận thưởng như bậc 4–10
     for (let i = rows.length - 1; i >= 0; i--) if (rows[i].rank > 10) rows.splice(i, 1);
     const voucherId = `raid_${raidId}`;
@@ -438,9 +463,9 @@ $('#rd-preview').onclick = async () => {
     });
     $('#rd-out').append(table);
     const todo = rows.filter(r => !r.exists && (r.reward.gold || r.reward.crystals || r.reward.item));
-    rdPlan = { raidId, day: parseInt(day, 10), voucherId, todo };
+    rdPlan = { raidId, day: parseInt(day, 10), voucherId, todo, ok, slot };
     $('#rd-commit').disabled = todo.length === 0;
-    log(`Boss ${grade} ngày ${day}: đã chịu ${(b.Damage || 0).toLocaleString('vi-VN')}/${(b.MaxHP || 0).toLocaleString('vi-VN')} sát thương${(b.Damage || 0) >= (b.MaxHP || 1) ? ' (ĐÃ HẠ)' : ' (chưa hạ)'}. ${todo.length} phiếu mới cần tạo.`, rows.length ? 'ok' : 'warn');
+    log(`Boss ${slot} khối ${grade} ngày ${day} — ${ok ? 'ĐÃ BỊ HẠ (đủ thưởng)' : 'THẤT BẠI (50%, không trang bị)'}: đã chịu ${(b.Damage || 0).toLocaleString('vi-VN')}/${(b.MaxHP || 0).toLocaleString('vi-VN')} sát thương${(b.Damage || 0) >= (b.MaxHP || 1) ? ' (ĐÃ HẠ)' : ' (chưa hạ)'}. ${todo.length} phiếu mới cần tạo.`, rows.length ? 'ok' : 'warn');
   } catch (e) {
     log('Không đọc được trận Raid: ' + e.message + '\nGợi ý: email đăng nhập phải nằm trong hàm isAdmin() của firestore.rules và rules đã Publish.', 'err');
   } finally { $('#rd-preview').disabled = false; }
@@ -454,7 +479,7 @@ $('#rd-commit').onclick = async () => {
     const batch = db.batch();
     rdPlan.todo.forEach(r => {
       const data = {
-        Title: `Hạng ${r.rank} Boss Raid khối ${rdPlan.raidId.split('_')[0]} (${rdPlan.raidId.split('_')[1].slice(6)}/${rdPlan.raidId.split('_')[1].slice(4, 6)})`,
+        Title: `Hạng ${r.rank} Boss ${rdPlan.slot} khối ${rdPlan.raidId.split('_')[0]} (${rdPlan.raidId.split('_')[1].slice(6)}/${rdPlan.raidId.split('_')[1].slice(4, 6)})${rdPlan.ok ? '' : ' - thất bại 50%'}`,
         WeekStart: rdPlan.day, Board: 'raid', Claimed: false, CreatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
       if (r.reward.gold) data.Gold = r.reward.gold;
@@ -469,6 +494,101 @@ $('#rd-commit').onclick = async () => {
     log('Không tạo được phiếu: ' + e.message + '\nNếu báo thiếu quyền: phiếu đã tồn tại, ID trang bị không hợp lệ hoặc rules chưa Publish.', 'err');
     $('#rd-commit').disabled = false;
   } finally { $('#rd-preview').disabled = false; }
+};
+
+// ================= CHỐT THƯỞNG RANKED THEO TUẦN =================
+// Đọc collection ranked (mỗi lớp 1 tài liệu { <UID>: { N, Pt, ... } }), lấy top 10 mỗi lớp (điểm > 10), tạo phiếu rewards/<UID>/vouchers/rk_<tuần>_<khối>_<lớp>.
+const RK_MIN_PT = 10;   // phải có điểm > 10 (khớp CONFIG.RANKED.START_POINTS trong game) mới được thưởng
+let rkPlan = null;
+(function buildRankedGrid() {
+  const table = el('table'), head = el('tr');
+  ['Bậc', 'Gold', 'Crystal'].forEach(h => head.append(el('th', h)));
+  table.append(head);
+  TIERS.forEach(t => {
+    const tr = el('tr'); tr.append(el('td', t.label));
+    [['gold', '100', '5000'], ['crystals', '0', '50']].forEach(([k, def, max]) => {
+      const input = document.createElement('input');
+      input.type = 'number'; input.min = '0'; input.max = max; input.value = def; input.id = `rk-${t.id}-${k}`; input.style.width = '90px';
+      const td = el('td'); td.append(input); tr.append(td);
+    });
+    table.append(tr);
+  });
+  $('#rk-grid').append(table);
+  $('#rw-week').querySelectorAll('option').forEach(o => $('#rk-week').append(o.cloneNode(true)));
+  $('#rk-week').selectedIndex = 0;   // mặc định: tuần đang diễn ra (chốt cuối tuần)
+})();
+const rkReward = tier => ({
+  gold: Math.max(0, Math.min(5000, parseInt($(`#rk-${tier}-gold`).value, 10) || 0)),
+  crystals: Math.max(0, Math.min(50, parseInt($(`#rk-${tier}-crystals`).value, 10) || 0))
+});
+$('#rk-preview').onclick = async () => {
+  const gsel = $('#rk-grade').value, ws = parseInt($('#rk-week').value, 10);
+  rkPlan = null; $('#rk-commit').disabled = true; $('#rk-out').replaceChildren();
+  $('#rk-preview').disabled = true; log('Đang đọc xếp hạng Ranked…');
+  try {
+    const snap = await db.collection('ranked').get();
+    const classes = [];
+    snap.forEach(doc => {
+      const [g, r] = doc.id.split('_');
+      if (gsel !== 'all' && g !== gsel) return;
+      const rows = Object.entries(doc.data()).filter(([, e]) => e && typeof e.Pt === 'number' && e.Pt > RK_MIN_PT).map(([uid, e]) => ({ uid, nick: e.N || '?', pt: e.Pt }));
+      rows.forEach(x => { x.rank = 1 + rows.filter(o => o.pt > x.pt).length; });
+      const winners = rows.filter(x => x.rank <= 10).sort((a, b) => a.rank - b.rank || a.nick.localeCompare(b.nick));
+      if (winners.length) classes.push({ id: doc.id, label: `${g}/${r}`, g: Number(g), r: Number(r), winners });
+    });
+    classes.sort((a, b) => a.g - b.g || a.r - b.r);
+    const all = [];
+    classes.forEach(c => c.winners.forEach(w => { w.reward = rkReward(tierOf(w.rank)); w.vid = `rk_${ws}_${c.id}`; all.push(w); }));
+    for (let i = 0; i < all.length; i += 25) {
+      await Promise.all(all.slice(i, i + 25).map(async w => { w.exists = (await db.collection('rewards').doc(w.uid).collection('vouchers').doc(w.vid).get()).exists; }));
+    }
+    const table = el('table'), head = el('tr');
+    ['Lớp', 'Số người', 'Thưởng mới', 'Danh sách'].forEach(h => head.append(el('th', h)));
+    table.append(head);
+    let fresh = 0, gold = 0, gems = 0;
+    classes.forEach(c => {
+      const todo = c.winners.filter(w => !w.exists && (w.reward.gold || w.reward.crystals));
+      const g = todo.reduce((a, w) => a + w.reward.gold, 0), cr = todo.reduce((a, w) => a + w.reward.crystals, 0);
+      fresh += todo.length; gold += g; gems += cr;
+      const tr = el('tr'), details = el('details'), list = el('div', '', 'small');
+      details.append(el('summary', todo.length ? `${todo.length} phiếu mới` : 'Đã chốt hết', todo.length ? 'new' : 'done'));
+      list.textContent = c.winners.map(w => `#${w.rank} ${w.nick} — ${w.pt} điểm — ${w.reward.gold} Gold${w.reward.crystals ? ` + ${w.reward.crystals} Crystal` : ''}${w.exists ? ' ✓đã chốt' : ''}`).join('\n');
+      list.style.whiteSpace = 'pre-wrap'; details.append(list);
+      tr.append(el('td', c.label), el('td', String(c.winners.length)), el('td', `${g.toLocaleString('vi-VN')} Gold + ${cr} Crystal`));
+      const td = el('td'); td.append(details); tr.append(td); table.append(tr);
+    });
+    $('#rk-out').append(table);
+    rkPlan = { ws, classes, fresh };
+    $('#rk-commit').disabled = fresh === 0;
+    log(classes.length ? `Có ${classes.length} lớp có người được thưởng; ${fresh} phiếu mới, tổng ${gold.toLocaleString('vi-VN')} Gold + ${gems.toLocaleString('vi-VN')} Crystal.` : 'Chưa lớp nào có người đủ điều kiện (điểm > 10).', classes.length ? 'ok' : 'warn');
+  } catch (e) {
+    log('Không đọc được Ranked: ' + e.message + '\nGợi ý: email đăng nhập phải nằm trong hàm isAdmin() của firestore.rules và rules đã Publish.', 'err');
+  } finally { $('#rk-preview').disabled = false; }
+};
+$('#rk-commit').onclick = async () => {
+  if (!rkPlan || !rkPlan.fresh) return;
+  if (!confirm(`Tạo ${rkPlan.fresh} phiếu thưởng Ranked tuần ${vn(rkPlan.ws)}? Việc này không hoàn tác được từ trang này.`)) return;
+  $('#rk-commit').disabled = true; $('#rk-preview').disabled = true; log('Đang tạo phiếu…');
+  try {
+    const writes = [];
+    rkPlan.classes.forEach(c => c.winners.filter(w => !w.exists && (w.reward.gold || w.reward.crystals)).forEach(w => {
+      const [g, r] = c.id.split('_');
+      const data = { Title: `Hạng ${w.rank} Ranked lớp ${g}/${r} (tuần ${vn(rkPlan.ws)})`, WeekStart: rkPlan.ws, Board: 'ranked', Claimed: false, CreatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+      if (w.reward.gold) data.Gold = w.reward.gold;
+      if (w.reward.crystals) data.Crystals = w.reward.crystals;
+      writes.push([db.collection('rewards').doc(w.uid).collection('vouchers').doc(w.vid), data]);
+    }));
+    for (let i = 0; i < writes.length; i += 400) {
+      const batch = db.batch();
+      writes.slice(i, i + 400).forEach(([ref, data]) => batch.set(ref, data));
+      await batch.commit();
+    }
+    log(`Đã tạo ${writes.length} phiếu thưởng Ranked.`, 'ok');
+    rkPlan = null; $('#rk-out').replaceChildren();
+  } catch (e) {
+    log('Không tạo được phiếu: ' + e.message + '\nNếu báo thiếu quyền: phiếu đã tồn tại hoặc rules chưa Publish.', 'err');
+    $('#rk-commit').disabled = false;
+  } finally { $('#rk-preview').disabled = false; }
 };
 </script>
 </body>
